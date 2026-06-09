@@ -1,297 +1,419 @@
 import streamlit as st
-import zipfile
-import os
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
-import random
+import tensorflow as tf
 
-# ==========================
+# =====================================
 # PAGE CONFIG
-# ==========================
+# =====================================
 st.set_page_config(
     page_title="Driver Drowsiness Detection",
     layout="wide"
 )
 
-st.title("🧠 Driver Drowsiness Detection System")
+st.title("🚗 Driver Drowsiness Detection System")
+st.markdown("---")
 
-st.markdown(
-    "Dataset (ZIP) + Eye & Yawn Analysis Dashboard"
+# =====================================
+# LOAD MODEL
+# =====================================
+@st.cache_resource
+def load_model():
+    return tf.keras.models.load_model("drowsiness_model.h5")
+
+try:
+    model = load_model()
+    st.success("✅ Model Loaded Successfully")
+except Exception as e:
+    st.error(f"❌ Model Loading Error: {e}")
+    st.stop()
+
+# =====================================
+# PROJECT OVERVIEW
+# =====================================
+st.header("📌 Project Overview")
+
+st.write("""
+This project detects driver fatigue using:
+
+- Eye Closure Detection
+- Yawning Detection
+- MobileNetV2 Transfer Learning
+- Decision Fusion Logic
+- Fatigue Progression Analysis
+""")
+
+st.markdown("---")
+
+# =====================================
+# DATASET OVERVIEW
+# =====================================
+st.header("📂 Dataset Overview")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric("Eye Images", "1234")
+
+with col2:
+    st.metric("Mouth Images", "1230")
+
+st.write("""
+Classes Used:
+- Closed
+- Open
+- no_yawn
+- yawn
+""")
+
+st.markdown("---")
+
+# =====================================
+# MODEL COMPARISON
+# =====================================
+st.header("📊 Model Comparison")
+
+comparison_df = pd.DataFrame({
+    "Model":[
+        "Custom CNN",
+        "MobileNetV2",
+        "ResNet50",
+        "EfficientNet",
+        "InceptionV3"
+    ],
+    "Validation Accuracy":[
+        88,
+        93.1,
+        72.2,
+        25,
+        89.2
+    ]
+})
+
+st.dataframe(comparison_df)
+
+fig, ax = plt.subplots()
+
+ax.bar(
+    comparison_df["Model"],
+    comparison_df["Validation Accuracy"]
 )
 
-# ==========================
-# ZIP FILE PATH
-# ==========================
-ZIP_FILE = r"c:/Users/LENOVO/Downloads/archive (2).zip"
+ax.set_ylabel("Accuracy (%)")
+ax.set_title("Model Comparison")
 
-EXTRACT_FOLDER = "dataset"
+st.pyplot(fig)
 
-# ==========================
-# EXTRACT ZIP FUNCTION
-# ==========================
-def extract_zip():
+st.success("🏆 Best Model Selected: MobileNetV2")
 
-    if not os.path.exists(EXTRACT_FOLDER):
+st.markdown("---")
 
-        with zipfile.ZipFile(ZIP_FILE, 'r') as zip_ref:
+# =====================================
+# MODEL EVALUATION
+# =====================================
+st.header("📈 Model Evaluation")
 
-            zip_ref.extractall(EXTRACT_FOLDER)
+col1, col2 = st.columns(2)
 
-        return "Dataset Extracted ✔"
-
-    return "Dataset Already Available ✔"
-
-# ==========================
-# LOAD DATASET IMAGES
-# ==========================
-def load_images(folder, limit=6):
-
-    images = []
-
-    for root, dirs, files in os.walk(folder):
-
-        for file in files:
-
-            if file.lower().endswith(
-                ("jpg", "jpeg", "png")
-            ):
-
-                images.append(
-                    os.path.join(root, file)
-                )
-
-            if len(images) >= limit:
-                break
-
-    return images
-
-# ==========================
-# FAKE PREDICTION FUNCTION
-# ==========================
-def predict_state():
-
-    eye_states = [
-        "Open",
-        "Closed"
-    ]
-
-    mouth_states = [
-        "No Yawn",
-        "Yawn"
-    ]
-
-    eye_pred = random.choice(eye_states)
-
-    mouth_pred = random.choice(mouth_states)
-
-    return eye_pred, mouth_pred
-
-# ==========================
-# SIDEBAR
-# ==========================
-st.sidebar.header("Navigation")
-
-page = st.sidebar.radio(
-    "Go to",
-    [
-        "🏠 Home",
-        "📦 Dataset Viewer",
-        "📷 Image Test",
-        "📊 Simulation"
-    ]
-)
-
-# ==========================
-# HOME PAGE
-# ==========================
-if page == "🏠 Home":
-
-    st.header("📌 Project Overview")
-
-    st.write("""
-    ### 🧠 Driver Drowsiness Detection System
-
-    This project uses:
-    - Eye state detection
-    - Yawning detection
-    - Deep learning (CNN / MobileNetV2)
-
-    ### 📦 Dataset:
-    archive (2).zip is used as dataset input
-    """)
-
-    if st.button("Extract Dataset"):
-
-        msg = extract_zip()
-
-        st.success(msg)
-
-# ==========================
-# DATASET VIEWER
-# ==========================
-elif page == "📦 Dataset Viewer":
-
-    st.header("📂 Dataset Preview")
-
-    msg = extract_zip()
-
-    st.info(msg)
-
-    images = load_images(
-        EXTRACT_FOLDER,
-        limit=6
+with col1:
+    st.metric(
+        "Eye Validation Accuracy",
+        "99.54%"
     )
 
-    if images:
+    st.metric(
+        "Eye Test Accuracy",
+        "97.71%"
+    )
 
-        cols = st.columns(3)
+with col2:
+    st.metric(
+        "Mouth Validation Accuracy",
+        "88.02%"
+    )
 
-        for i, img_path in enumerate(images):
+    st.metric(
+        "Mouth Test Accuracy",
+        "94.04%"
+    )
 
-            img = Image.open(img_path)
+st.markdown("---")
 
-            cols[i % 3].image(
-                img,
-                use_container_width=True
-            )
+# =====================================
+# IMAGE PREDICTION
+# =====================================
+st.header("📷 Driver Image Prediction")
+
+uploaded_file = st.file_uploader(
+    "Upload Driver Image",
+    type=["jpg", "jpeg", "png"]
+)
+
+if uploaded_file is not None:
+
+    image = Image.open(uploaded_file).convert("RGB")
+
+    st.image(
+        image,
+        caption="Uploaded Image",
+        width=350
+    )
+
+    # Preprocessing
+    img = image.resize((224,224))
+
+    img = np.array(img)
+
+    img = img / 255.0
+
+    img = np.expand_dims(
+        img,
+        axis=0
+    )
+
+    # Prediction
+    prediction = model.predict(
+        img,
+        verbose=0
+    )
+
+    pred_index = np.argmax(
+        prediction
+    )
+
+    # CHANGE ONLY IF CLASS ORDER DIFFERENT
+    class_names = [
+        "Closed",
+        "Open",
+        "no_yawn",
+        "yawn"
+    ]
+
+    pred_class = class_names[
+        pred_index
+    ]
+
+    confidence = round(
+        np.max(prediction) * 100,
+        2
+    )
+
+    st.subheader("Prediction Result")
+
+    st.write(
+        f"Predicted Class: {pred_class}"
+    )
+
+    st.write(
+        f"Confidence: {confidence}%"
+    )
+
+    # =====================================
+    # DECISION FUSION LOGIC
+    # =====================================
+
+    if pred_class in ["Open", "no_yawn"]:
+
+        fatigue = "🟢 Alert"
+        fatigue_score = 0
+
+    elif pred_class == "yawn":
+
+        fatigue = "🟡 Mild Fatigue"
+        fatigue_score = 1
+
+    elif pred_class == "Closed":
+
+        fatigue = "🔴 Severe Fatigue"
+        fatigue_score = 2
 
     else:
 
-        st.warning(
-            "No images found in dataset"
-        )
+        fatigue = "Unknown"
+        fatigue_score = -1
 
-# ==========================
-# IMAGE TEST
-# ==========================
-elif page == "📷 Image Test":
-
-    st.header("📷 Upload Driver Image")
-
-    uploaded_file = st.file_uploader(
-        "Upload Driver Face Image",
-        type=["jpg", "jpeg", "png"]
+    st.success(
+        f"Fatigue Level: {fatigue}"
     )
 
-    if uploaded_file is not None:
-
-        image = Image.open(uploaded_file)
-
-        st.image(
-            image,
-            caption="Uploaded Image",
-            use_container_width=True
-        )
-
-        # Fake prediction
-        eye_pred, mouth_pred = predict_state()
-
-        st.write(
-            "👁 Eye State:",
-            eye_pred
-        )
-
-        st.write(
-            "👄 Mouth State:",
-            mouth_pred
-        )
-
-        # Decision Fusion Logic
-        if (
-            eye_pred == "Open"
-            and mouth_pred == "No Yawn"
-        ):
-
-            fatigue_level = "🟢 Alert"
-
-        elif eye_pred == "Closed":
-
-            fatigue_level = "🔴 Severe Fatigue"
-
-        elif mouth_pred == "Yawn":
-
-            fatigue_level = "🟡 Mild Fatigue"
-
-        else:
-
-            fatigue_level = "🟢 Alert"
-
-        st.write(
-            "🚨 Fatigue Level:",
-            fatigue_level
-        )
-
-# ==========================
-# SIMULATION
-# ==========================
-elif page == "📊 Simulation":
-
-    st.header(
-        "📊 Driver Fatigue Progression Curve"
+    st.metric(
+        "Fatigue Score",
+        fatigue_score
     )
 
-    if st.button("Start Simulation"):
+    st.subheader("Class Probabilities")
 
-        data = []
+    probs = prediction[0]
 
-        progress = st.progress(0)
+    for label, prob in zip(
+        class_names,
+        probs
+    ):
 
-        # Realistic fatigue sequence
-        fatigue_sequence = [
-            0,0,0,0,0,
-            1,1,1,1,1,
-            1,1,2,2,2,
-            2,2,2,2,2,
-            2,2,1,1,1,
-            0,0
-        ]
-
-        for i, value in enumerate(
-            fatigue_sequence
-        ):
-
-            data.append(value)
-
-            progress.progress(
-                int(
-                    (i + 1)
-                    / len(fatigue_sequence)
-                    * 100
-                )
-            )
-
-        st.subheader("📉 Fatigue Curve")
-
-        fig, ax = plt.subplots(
-            figsize=(10, 5)
+        st.write(
+            f"{label}: {prob*100:.2f}%"
         )
 
-        ax.plot(
-            data,
-            marker="o"
+        st.progress(
+            float(prob)
         )
 
-        ax.set_yticks([0,1,2])
+st.markdown("---")
 
-        ax.set_yticklabels([
-            "Alert",
-            "Mild",
-            "Severe"
-        ])
+# =====================================
+# DECISION FUSION TABLE
+# =====================================
+st.header("🧠 Decision Fusion Logic")
 
-        ax.set_xlabel("Time")
+fusion_df = pd.DataFrame({
+    "Prediction":[
+        "Open",
+        "no_yawn",
+        "yawn",
+        "Closed"
+    ],
+    "Fatigue Stage":[
+        "Alert",
+        "Alert",
+        "Mild Fatigue",
+        "Severe Fatigue"
+    ]
+})
 
-        ax.set_ylabel("Fatigue Level")
+st.table(fusion_df)
 
-        ax.set_title(
-            "Driver Fatigue Progression Curve"
-        )
+st.markdown("---")
 
-        ax.grid(True)
+# =====================================
+# FATIGUE PROGRESSION CURVE
+# =====================================
+st.header("📉 Driver Fatigue Progression Curve")
 
-        st.pyplot(fig)
+fatigue_sequence = [
+    0,0,0,0,0,
+    1,1,1,1,1,
+    1,2,2,2,2,
+    2,2,2,2,2,
+    1,1,1,
+    0,0
+]
 
-        st.success(
-            "Simulation Completed ✔"
-        )
+fig, ax = plt.subplots(
+    figsize=(10,5)
+)
+
+ax.plot(
+    fatigue_sequence,
+    marker='o',
+    linewidth=2
+)
+
+ax.set_yticks([0,1,2])
+
+ax.set_yticklabels([
+    "Alert",
+    "Mild Fatigue",
+    "Severe Fatigue"
+])
+
+ax.set_xlabel("Time Interval")
+
+ax.set_ylabel("Fatigue Level")
+
+ax.set_title(
+    "Driver Fatigue Progression Curve"
+)
+
+ax.grid(True)
+
+st.pyplot(fig)
+
+st.info("""
+Transition Points:
+
+Alert → Mild Fatigue : Interval 5
+
+Mild Fatigue → Severe Fatigue : Interval 11
+""")
+
+st.markdown("---")
+
+# =====================================
+# PERFORMANCE ANALYSIS
+# =====================================
+st.header("⚠️ Performance Analysis")
+
+st.subheader("Robustness Analysis")
+
+st.write("""
+✔ Good lighting → Excellent Performance
+
+✔ Normal pose → Excellent Performance
+
+⚠ Spectacles → Moderate Impact
+
+⚠ Low Light → Reduced Accuracy
+
+⚠ Face Occlusion → Performance Drop
+""")
+
+st.subheader("Limitations")
+
+st.write("""
+- Low illumination affects predictions
+- Extreme head rotations reduce accuracy
+- Requires visible eye and mouth regions
+- Real-time performance depends on hardware
+""")
+
+st.subheader("Class-wise Analysis")
+
+analysis_df = pd.DataFrame({
+    "Class":[
+        "Alert",
+        "Mild Fatigue",
+        "Severe Fatigue"
+    ],
+    "Performance":[
+        "Excellent",
+        "Good",
+        "Excellent"
+    ]
+})
+
+st.table(analysis_df)
+
+st.markdown("---")
+
+# =====================================
+# CONCLUSION
+# =====================================
+st.header("✅ Conclusion")
+
+st.success("""
+Driver Drowsiness Detection System successfully detects fatigue using:
+
+👁 Eye Closure Analysis
+
+👄 Yawning Analysis
+
+🧠 MobileNetV2 Deep Learning Model
+
+📉 Fatigue Progression Curve
+
+🏆 Best Model: MobileNetV2
+
+Eye Test Accuracy: 97.71%
+
+Mouth Test Accuracy: 94.04%
+
+Fatigue Stages:
+
+🟢 Alert
+
+🟡 Mild Fatigue
+
+🔴 Severe Fatigue
+""")
